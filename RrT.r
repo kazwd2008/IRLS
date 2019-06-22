@@ -5,6 +5,8 @@
 #    Weight function:  Tukey's biweight function
 #    Scale: Average absolute deviation (AAD) or median absolute deviation (MAD)
 #------------------------------------------------------------------------------------------------#
+#      Impremented by K. Wada (NSTAC, Japan)	
+#------------------------------------------------------------------------------------------------#
 #       Created from Tirls.r  Ver. 4.0 [2014/09/05] for regression model                      
 #       Ver.0     [2017/03/27]  Functions with AAD scale are implemented. 
 #       Ver.1     [2017/04/10]  - Functions with MAD scale are added.
@@ -12,24 +14,29 @@
 #	                          when all weights (w1) become zero.
 #------------------------------------------------------------------------------------------------#
 #  Functions  
-# 	RrTa: 	  Gamma = 1,   AAD scale  　　　　　　                     
-# 	RrTb:     Gamma = 1/2, AAD scale (conventional ratio model)
-# 	RrTc:     Gamma = 0,   AAD scale (single regression without intercept)
+# 	RrTa.aad: Gamma = 1,   AAD scale  　　　　　　                     
+# 	RrTb.aad: Gamma = 1/2, AAD scale (conventional ratio model)
+# 	RrTc.aad: Gamma = 0,   AAD scale (single regression without intercept)
 # 	RrTa.mad: Gamma = 1,   MAD scale* 
 # 	RrTb.mad: Gamma = 1/2, MAD scale* (conventional ratio model)
 # 	RrTc.mad: Gamma = 0,   MAD scale* (single regression without intercept)
-#           ※ Since the mad function in R returns values corresponding to the standard deviation
+#           * Since the mad function in R returns values corresponding to the standard deviation
 #              (SD), tuning constants for SD are used instead of those for MAD.    
 #------------------------------------------------------------------------------------------------#
 #  Parameters 
 #   x1      single explanatory variable 
 #   y1      objective variable                               
 #   c1      tuning parameter for Tukey's biweight function
-#           (default setting : c1=8 for AAD)。 
-#   c=4     very robust
-#   c=8     less robust
-#   dat     name of dataframe in which x1 and y1 are included
+#   dat     name of dataframe (if necessary) in which x1 and y1 are included
 #   rp.max  maximum number of iteration (default setting : 100)
+#------------------------------------------------------------------------------------------------#
+#   Recommended range of tuning parameter for Tukey's biweight function
+#
+#              More robust <----> Less robust | default setting
+#      ---------+--------+--------+-----------+-------------------   
+#	 SD     |  5.01  |  7.52  |  10.03    |  10.03
+#	 AAD    |  4     |  6     |   8       |   8
+#        MAD    |  3.38  |  5.07  |   6.76    | * Use the value for SD for mad function in R
 #------------------------------------------------------------------------------------------------#
 #  Returned values
 #   par     robustly estimated rate y1/x1 
@@ -41,11 +48,13 @@
 #################################################################################################
 # 	RrTa :   gamma = 1
 #------------------------------------------------------------------------------------------------#
-RrTa <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
-  x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
+RrTa.aad <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
+
   if (dat!="") attach(get(dat))	        
+  x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
+
   s1.cg <- rep(0, rp.max)                        # preserve changes in s1 (scale)
-  efg <- 0
+  efg <- 0					 # error flag
   par <- mean(y1 / x1)	                     	 # initial estimation
   res <- y1 / x1 - par			         # homoscedastic quasi-residuals  
   rp1 <- 1				         # number of iteration
@@ -61,7 +70,7 @@ RrTa <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
   for (i in 2:rp.max) {                            
       par.bak <- par
       res.bak <- res
-      par <- sum(w1 * y1 / x1) / sum(w1)     	            
+      par <- sum(w1 * y1 / x1) / sum(w1)     	# robust estimation with weights 
       res <- y1 / x1 - par			# homoscedastic quasi-residuals
       rp1 <- rp1 + 1				# number of iteration
       s1 <- s1.cg[rp1] <- mean(abs(res))	# AAD scale
@@ -77,10 +86,12 @@ RrTa <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
 
 #------------------------------------------------------------------------------------------------#
 RrTa.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
-  x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
+
   if (dat!="") attach(get(dat))	        
+  x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
+
   s1.cg <- rep(0, rp.max)               	 # preserve changes in s1 (scale)
-  efg <- 0
+  efg <- 0					 # error flag
   par <- mean(y1 / x1)	                	 # initial estimation
   res <- y1 / x1 - par				 # homoscedastic quasi-residuals
   rp1 <- 1					 # number of iteration
@@ -96,7 +107,7 @@ RrTa.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
   for (i in 2:rp.max) {                            
       par.bak <- par
       res.bak <- res
-      par <- sum(w1 * y1 / x1) / sum(w1)     	            
+      par <- sum(w1 * y1 / x1) / sum(w1)     	# robust estimation with weights 
       res <- y1 / x1 - par			# homoscedastic quasi-residuals 
       rp1 <- rp1 + 1				# number of iteration
       s1 <- s1.cg[rp1] <- mad(res)	        # MAD scale
@@ -113,12 +124,14 @@ RrTa.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
 #################################################################################################
 # 	RetTb :   gamma = 1/2 (conventional ratio estimator)
 #------------------------------------------------------------------------------------------------#
-RrTb <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
+RrTb.aad <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
+
+  if (dat!="") attach(get(dat))	        
   x1 <- as.numeric(x1);    y1 <- as.numeric(y1) # prevent overflow
-  if (dat!="") attach(get(dat))	      
+
   s1.cg <- rep(0, rp.max)                	# preserve changes in s1 (scale)
-  efg <- 0
-  par <- sum(y1) / sum(x1)     	      
+  efg <- 0					# error flag
+  par <- sum(y1) / sum(x1)     	      		# initial estimation
   res <- y1/sqrt(x1) - par*sqrt(x1)	 	# homoscedastic quasi-residuals 
   rp1 <- 1					# number of iteration
   s0 <- s1 <- s1.cg[rp1] <- mean(abs(res))      # AAD scale
@@ -133,7 +146,7 @@ RrTb <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
   for (i in 2:rp.max) {
         par.bak <- par
         res.bak <- res
-        par   <- sum(y1 * w1) / sum(x1 * w1 )    
+        par   <- sum(y1 * w1) / sum(x1 * w1 )     # robust estimation with weights 
         res   <-  y1 / sqrt(x1) - par * sqrt(x1)  # homoscedastic quasi-residuals 
         rp1 <- rp1 + 1				  # number of iteration
         s1 <- s1.cg[rp1] <- mean(abs(res))        # AAD scale 
@@ -149,10 +162,12 @@ RrTb <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
 
 #------------------------------------------------------------------------------------------------#
 RrTb.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
+
+  if (dat!="") attach(get(dat))	        
   x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
-  if (dat!="") attach(get(dat))	      
+
   s1.cg <- rep(0, rp.max)                # preserve changes in s1 (scale)
-  efg <- 0
+  efg <- 0				 # error flag
   par <- sum(y1) / sum(x1)     	         # initial estimation
   res <- y1/sqrt(x1) - par*sqrt(x1)	 # homoscedastic quasi-residuals 
   rp1 <- 1				 # number of iteration
@@ -168,7 +183,7 @@ RrTb.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
   for (i in 2:rp.max) {
         par.bak <- par
         res.bak <- res
-        par   <- sum(y1 * w1) / sum(x1 * w1 )     
+        par   <- sum(y1 * w1) / sum(x1 * w1 )     	# robust estimation with weights 
         res   <-  y1 / sqrt(x1) - par * sqrt(x1)	# homoscedastic quasi-residuals 
         rp1 <- rp1 + 1					# number of iteration
         s1 <- s1.cg[rp1] <- mad(res)                    # MAD scale
@@ -185,11 +200,13 @@ RrTb.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
 #################################################################################################
 # 	RrTc :   gamma = 1 (a single regression without intercept)
 #------------------------------------------------------------------------------------------------#
-RrTc <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
+RrTc.aad <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
+
+  if (dat!="") attach(get(dat))	        
   x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
-  if (dat!="") attach(get(dat))	      
+
   s1.cg <- rep(0, rp.max)                        # preserve changes in s1 (scale)
-  efg <- 0
+  efg <- 0					 # error flag
   par <- sum(y1 * x1) / sum(x1**2)               # initial estimation
   res <- y1 - par*x1	                         # homoscedastic quasi-residuals 
   rp1 <- 1					 # number of iteration
@@ -205,7 +222,7 @@ RrTc <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
   for (i in 2:rp.max) {
         par.bak <- par
         res.bak <- res
-        par   <- sum(y1 * x1 * w1) / sum(x1 **2 * w1 )    
+        par   <- sum(y1 * x1 * w1) / sum(x1 **2 * w1 )    # robust estimation with weights 
         res   <-  y1  - par * x1		          # homoscedastic quasi-residuals 
         rp1 <- rp1 + 1					  # number of iteration
         s1 <- s1.cg[rp1] <- mean(abs(res))          	  # AAD scale
@@ -221,10 +238,12 @@ RrTc <- function(x1, y1, c1=8, dat="", rp.max=10, cg.rt=0.01) {
 
 #------------------------------------------------------------------------------------------------#
 RrTc.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
+
+  if (dat!="") attach(get(dat))	        
   x1 <- as.numeric(x1);    y1 <- as.numeric(y1)  # prevent overflow
-  if (dat!="") attach(get(dat))	      
+
   s1.cg <- rep(0, rp.max)                   	 # preserve changes in s1 (scale)
-  efg <- 0
+  efg <- 0					 # error flag
   par <- sum(y1 * x1) / sum(x1**2)     	    	 # initial estimation
   res <- y1 - par*x1	                    	 # homoscedastic quasi-residuals 
   rp1 <- 1					 # number of iteration
@@ -240,7 +259,7 @@ RrTc.mad <- function(x1, y1, c1=10.03, dat="", rp.max=50, cg.rt=0.01) {
   for (i in 2:rp.max) {
         par.bak <- par
         res.bak <- res
-        par   <- sum(y1 * x1 * w1) / sum(x1 **2 * w1 )     
+        par   <- sum(y1 * x1 * w1) / sum(x1 **2 * w1 )  # robust estimation with weights   
         res   <-  y1  - par * x1		        # homoscedastic quasi-residuals 
         rp1 <- rp1 + 1					# number of iteration
         s1 <- s1.cg[rp1] <- mad(res)                    # MAD scale
