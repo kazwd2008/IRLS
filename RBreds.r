@@ -13,6 +13,7 @@
 #       Ver. 0.4 [2019.07.25]  correct the last estimation of g1 with weights
 # 	Ver. 1.0 [2019.09.30]  publish for JSM2019 Proceedings after a minor bug correction
 #                              and improved loop counters [See Wada, Takata, and Tsubaki (2019)]
+#       Ver. 1.1 [2025.07.26]  An internal bug (which does not affect outcomes) corrected
 #---------------------------------------------------------------------------------------------#
 #  Parameters
 #   x1       single explanatory variable
@@ -46,7 +47,8 @@ RBred <- function(x1, y1, g1=0, c1=8, dat="", rp.max=100,  cg1=0.001){
 
 ####---------------------------------------------------------------------------------------(1)
    Trt1 <- sum(y1 * x1^(1-2*g1)) / sum(x1^(2*(1-g1)))	# ratio estimation
-   rs1.x <- y1 - Trt1 * x1				# heteroscedastic residuals 
+  # rs1.x <- y1 - Trt1 * x1				# heteroscedastic residuals 
+   rs1.x <- y1 * x1^g1 - Trt1 * x1^(1+g1)		# heteroscedastic residuals (2025.07.26)
    rs1   <- y1 / x1^g1 - Trt1 * x1^(1-g1)		# homoscedastic quasi-residuals
 
    s1 <- s1.cg[rp1[1]] <- mean(abs(rs1))	      @# AAD scale of quasi-residuals
@@ -62,7 +64,8 @@ RBred <- function(x1, y1, g1=0, c1=8, dat="", rp.max=100,  cg1=0.001){
        g1 <- (solve(t(x2) %*% x2) %*% t(x2) %*% log(abs(rs1.x[ix1])))[2]   # estimate power
 
        Trt1  <- sum(y1 * x1^(1-2*g1)) / sum(x1^(2*(1-g1)))		   # estimate ratio
-       rs1.x  <- y1 - Trt1 * x1			# heteroscedastic residuals (conventional)
+       # rs1.x  <- y1 - Trt1 * x1		# heteroscedastic residuals (conventional)
+       rs1.x  <- y1 * x1^g1 - Trt1 * x1^(1+g1)	# heteroscedastic residuals (2025.07.26)
        rs1    <- y1 / x1^g1 - Trt1 * x1^(1-g1)	# homoscedastic quasi-residuals 
 
        s0 <- s1					# preserve the previous value (AAD)
@@ -93,7 +96,8 @@ RBred <- function(x1, y1, g1=0, c1=8, dat="", rp.max=100,  cg1=0.001){
 
     # estimate Trt1 with fixed value of g1 obtained in the previous step
       Trt1  <- sum(w1[ix1] *y1[ix1] * (w1[ix1] * x1[ix1])^(1-2*g1)) / sum((w1[ix1] * x1[ix1])^(2*(1-g1))) 
-      rs1.x  <- y1 - Trt1 * x1		            # heteroscedastic residuals
+      # rs1.x  <- y1 - Trt1 * x1		      # heteroscedastic residuals
+      rs1.x <- y1 * x1^g1 - Trt1 * x1^(1+g1)	    # heteroscedastic residuals (2025.07.26)
       rs1    <- y1 / x1^g1 - Trt1 * x1^(1-g1)	    # homoscedastic quasi-residuals
 
       s0 <- s1					    # preserve previous AAD value
@@ -124,7 +128,8 @@ RBred <- function(x1, y1, g1=0, c1=8, dat="", rp.max=100,  cg1=0.001){
       (g1 <- (solve(t(x2) %*% x2) %*% t(x2) %*% log(abs(rs1.x[ix1]*w1[ix1])))[2])     # estimate power (g1)
 
       Trt1  <- sum(w1[ix1] *y1[ix1] * (w1[ix1] * x1[ix1])^(1-2*g1)) / sum((w1[ix1] * x1[ix1])^(2*(1-g1))) 
-      rs1.x  <- y1 - Trt1 * x1			# heteroscedastic residuals
+      # rs1.x  <- y1 - Trt1 * x1			# heteroscedastic residuals
+      rs1.x <- y1 * x1^g1 - Trt1 * x1^(1+g1)	# heteroscedastic residuals (2025.07.26)
       rs1    <- y1 / x1^g1 - Trt1 * x1^(1-g1)	# homoscedastic quasi-residuals
 
       s0 <- s1
@@ -158,7 +163,8 @@ RBred <- function(x1, y1, g1=0, c1=8, dat="", rp.max=100,  cg1=0.001){
          (g1 <- (solve(t(x2) %*% x2) %*% t(x2) %*% log(abs(rs1.x[ix1]*w1[ix1])))[2])
 
          Trt1  <- sum(w1[ix1] *y1[ix1] * (w1[ix1] * x1[ix1])^(1-2*g1)) / sum((w1[ix1] * x1[ix1])^(2*(1-g1))) 
-         rs1.x  <- y1 - Trt1 * x1			# heteroscedastic residuals
+         # rs1.x  <- y1 - Trt1 * x1			# heteroscedastic residuals
+         rs1.x  <- y1 * x1^g1 - Trt1 * x1^(1+g1)	# heteroscedastic residuals (2025.07.26)
          rs1    <- y1 / x1^g1 - Trt1 * x1^(1-g1)	# homoscedastic quasi-residuals
 
          s0 <- s1
@@ -211,7 +217,8 @@ Bred <- function(x1, y1, g1=0, dat="", rp.max=100,  cg1=0.001){
 
 ####---------------------------------------------------------------------------------------(1)
    (Trt1 <- sum(y1 * x1^(1-2*g1)) / sum(x1^(2*(1-g1))))	# estimate ratio
-   rs1.x <- y1 - Trt1 * x1
+   # rs1.x <- y1 - Trt1 * x1
+   rs1.x <- y1 * x1^g1 - Trt1 * x1^(1+g1)		# heteroscedastic residuals (2025.07.26)
    rs1   <- y1 / x1^g1 - Trt1 * x1^(1-g1)
 
    g1.cg[rp1]  <- g1
@@ -227,7 +234,8 @@ Bred <- function(x1, y1, g1=0, dat="", rp.max=100,  cg1=0.001){
        g1 <- (solve(t(x2) %*% x2) %*% t(x2) %*% log(abs(rs1.x[ix1])))[2]
 
        (Trt1  <- sum(y1 * x1^(1-2*g1)) / sum(x1^(2*(1-g1))))
-       rs1.x  <- y1 - Trt1 * x1
+       # rs1.x  <- y1 - Trt1 * x1
+       rs1.x  <- y1 * x1^g1 - Trt1 * x1^(1+g1)		# heteroscedastic residuals (2025.07.26)
        rs1    <- y1 / x1^g1 - Trt1 * x1^(1-g1)
 
        s0 <- s1
