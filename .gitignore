@@ -18,6 +18,9 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Others
+Rbred_bak.r
+
 # =========================
 # Operating System Files
 # =========================
